@@ -1,0 +1,9 @@
+- name: win_ping Intento de Ping
+  hosts: all
+#Se llama al Host definido en el inventario.yml
+  become: false
+  gather_facts: false
+  tasks:
+    - name: test ping
+      win_ping:
+#Intento de Ping al server Windows

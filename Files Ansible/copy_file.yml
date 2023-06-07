@@ -1,0 +1,15 @@
+---
+- name: win_copy Test
+  hosts: all
+#Se llama al Host definido en el inventario.yml
+  become: false
+  gather_facts: false
+  vars:
+    source: "/lhome/ansiapd11252021/Test.txt"
+    destination: "C:/Documents and Settings/PAMDABSPD041519/Desktop/Windows_Test/"
+#Ruta de origen y destino del archivo
+  tasks:
+    - name: copy Test.txt
+      win_copy:
+        src: "{{ source }}"
+        dest: "{{ destination }}"      
