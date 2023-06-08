@@ -1,0 +1,40 @@
+param (
+	$build_id,
+	$reportPath, 
+	$reportBackupPath,
+	$reportServerFolder, 
+	$reportServerUrl,
+	$reportServerItem,
+	$parent_project
+)
+
+
+# Script ejecutor  de despliegues de Reporting Services
+
+# Crear sesion persistente
+$password = ConvertTo-SecureString "MyDummyPasswd" -AsPlainText -Force
+$Cred = New-Object System.Management.Automation.PSCredential ("epmtelco\MyUser", $password)
+$session = New-PSSession -ComputerName 10.100.77.92 -Credential $Cred -Authentication Negotiate
+
+# Copiar archivo de despliegue en ubicacion remota SSIS
+Set-Location /tmp/BI-SSSAS-FIJO/$build_id/deploy
+# Creando directorios en host remoto
+Invoke-Command -Session $session -ScriptBlock { param ($build_id) New-Item -ItemType Directory -Path "C:\devops_ssrs\deployment\$build_id\deploy\" } -ArgumentList $build_id
+Invoke-Command -Session $session -ScriptBlock { param ($build_id) New-Item -ItemType Directory -Path "C:\devops_ssrs\deployment\$build_id\backup\Artefactos" } -ArgumentList $build_id
+
+
+# Copiando el paquete de despliegue en el host remoto
+Copy-Item "./deploy.zip" -Destination "C:\devops_ssrs\deployment\$build_id\deploy\"  -ToSession $session
+
+# Descomprimiendo paquete de despliegue
+Invoke-Command -Session $session -ScriptBlock {param($build_id) powershell -File "C:\devops_ssrs\conf\unzip_deploy.ps1" -build_id "$build_id" }  -ArgumentList $build_id
+
+# Ejecutando el deploy
+Invoke-Command -Session $session  -ScriptBlock{param ($build_id, $reportPath, $reportBackupPath, $reportServerFolder, $reportServerUrl, $reportServerItem) powershell -F "C:\devops_ssrs\conf\deploy_ssrs.ps1" -build_id "$build_id" -reportPath "$reportPath" -reportBackupPath  "$reportBackupPath" -reportServerFolder "$reportServerFolder" -reportServerUrl "$reportServerUrl" -reportServerItem "$reportServerItem"} -ArgumentList $build_id, $reportPath, $reportBackupPath, $reportServerFolder, $reportServerUrl, $reportServerItem
+
+# Moviendo backup a servidor ansible
+#Invoke-Command -Session $session -ScriptBlock {param($build_id, $parent_project) Move-Item "C:\devops_ssrs\deployment\$build_id\backup\$parent_project" "C:\devops_ssrs\deployment\$build_id\backup\Artefactos"} -ArgumentList $build_id, $parent_project
+
+
+#Cerrando sesion
+Remove-PSSession $session
